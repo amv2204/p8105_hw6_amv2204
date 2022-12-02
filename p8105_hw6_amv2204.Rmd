@@ -76,7 +76,8 @@ Now for just the city of Baltimore, we will fit a logistic model with the homici
 
 Balt =
   homicides %>%
-  filter(city == "Baltimore")
+  filter(city == "Baltimore") %>%
+  select(solved, victim_age, victim_race, victim_sex)
 
 fit_balt = 
   Balt %>% 
@@ -93,6 +94,34 @@ fit_balt %>%
 
 ```
 
+Let's repeat this for all the cities and get the adjusted OR with their 95% CI for solving homicides comparing males to females.  
+
+```{r}
+homi_nest =
+  homicides %>% 
+  select(city_state, solved, victim_age, victim_race, victim_sex) %>% 
+  relocate(city_state) %>% 
+  nest(data = solved:victim_sex)
+
+
+fit_all = 
+  homi_nest %>% 
+  mutate(
+    models = map(.x = data, ~glm(solved ~ victim_age + victim_race + victim_sex, data = .x, family = binomial())),
+    results = map(models, broom::tidy)) %>% 
+  select(-data, -models) %>% 
+  unnest(results) %>% 
+  mutate(lower_CI = exp(estimate - 1.96*std.error),
+         upper_CI = exp(estimate + 1.96*std.error),
+         OR = exp(estimate)) %>%
+  select(city_state, term, OR, lower_CI, upper_CI) %>%
+  filter(term == "victim_sexMale")
+
+fit_all %>%
+  knitr::kable(digits = 3)
+
+
+```
 
 
 
