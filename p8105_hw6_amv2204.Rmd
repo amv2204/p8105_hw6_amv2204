@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   echo = TRUE,
   warning = FALSE,
   fig.width = 8,
-  fig.asp = 6,
+  fig.asp = 1,
   out.width = "90%"
 )
 
@@ -39,7 +39,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ## Problem 2
 
-We will start by loading the homicides data. 
+We will start by loading the homicide data. 
 
 ```{r}
 homicides = read.csv("./homicide-data.csv")
@@ -70,7 +70,7 @@ homicides %>%
   
 ```
 
-Now for just the city of Baltimore, we will fit a logistic model with the homicide being solved as the outcome and with victim age, sex, and race as predictors. 
+Now for just the city of Baltimore, we will fit a logistic model with homicide being solved as the outcome and with victim age, sex, and race as predictors. 
 
 ```{r}
 
@@ -94,7 +94,7 @@ fit_balt %>%
 
 ```
 
-Let's repeat this for all the cities and get the adjusted OR with their 95% CI for solving homicides comparing males to females.  
+Let's repeat this for all the cities and get the OR with their 95% CI for solving homicides comparing males to females, adjusting for race and age.  
 
 ```{r}
 homi_nest =
@@ -120,10 +120,27 @@ fit_all =
 fit_all %>%
   knitr::kable(digits = 3)
 
+```
+
+Now we will make a plot showing the OR and 95% CI for each city.
+
+```{r}
+
+fit_all %>% 
+  mutate(city_state = fct_reorder(city_state, OR)) %>% 
+  ggplot(aes(x = city_state, y = OR)) +        
+    geom_point() +
+    geom_errorbar(aes(ymin = lower_CI, ymax = upper_CI)) +
+    theme(axis.text.x = element_text(angle = 80, hjust = 1))
 
 ```
 
+From this plot, we can see the city with the lowest OR for solved homicides comparing male victims to females while adjusting for race and age is New York at 0.26 and the highest is Albuquerque at 1.77.
 
+The interpretations are as follows: 
 
+In New York City, the odds of solving a homicide case for a male is 0.26 times the odds of solving a homicide case for a female, adjusting for race and age. In Albuquerque, the odds of solving a homicide case for a male is 1.77 times the odds of solving a homicide case for a female, adjusting for race and age.
+
+However, the confidence interval for Albuquerque includes the null value of 1 making the OR not statistically significant whereas 1 is not in the confidence interval for New York, which means the OR is statistically significant. We would need to double check with the p-values.
 
 
