@@ -51,13 +51,13 @@ Next we will do some data cleaning as below:
 homicides =   
   homicides %>%
   unite("city_state", city:state, sep = ", ", remove = FALSE) %>% 
-  mutate(
-    solved = if_else(disposition %in% c("Closed without arrest", "Open/No arrest"), "Unsolved", "Solved", NA_character_)) %>%
+  mutate(solved = as.numeric(disposition == "Closed by arrest")) %>%
   filter(!(city %in% c("Dallas", "Phoenix", "Kansas City"))) %>%
   filter(city_state != "Tulsa, AL") %>%
   mutate(victim_age = as.numeric(victim_age)) %>%
-  filter(victim_race %in% c("White", "Black"))
-
+  filter(victim_race %in% c("White", "Black")) %>%
+  mutate(victim_race = fct_relevel(victim_race, "White")) %>%
+  filter(victim_sex != "Unknown")
 
 homicides %>% 
   group_by(city_state) %>%
@@ -70,8 +70,28 @@ homicides %>%
   
 ```
 
+Now for just the city of Baltimore, we will fit a logistic model with the homicide being solved as the outcome and with victim age, sex, and race as predictors. 
+
+```{r}
+
+Balt =
+  homicides %>%
+  filter(city == "Baltimore")
+
+fit_balt = 
+  Balt %>% 
+  glm(solved ~ victim_age + victim_race + victim_sex, data = ., family = binomial()) 
+
+fit_balt %>% 
+  broom::tidy() %>%
+  mutate(lower_CI = exp(estimate - 1.96*std.error),
+         upper_CI = exp(estimate + 1.96*std.error),
+         OR = exp(estimate)) %>%
+  select(term, OR, lower_CI, upper_CI) %>% 
+  knitr::kable(digits = 3)
 
 
+```
 
 
 
