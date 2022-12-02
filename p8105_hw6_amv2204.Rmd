@@ -39,8 +39,36 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ## Problem 2
 
+We will start by loading the homicides data. 
+
+```{r}
+homicides = read.csv("./homicide-data.csv")
+```
+
+Next we will do some data cleaning as below:
+
+```{r}
+homicides =   
+  homicides %>%
+  unite("city_state", city:state, sep = ", ", remove = FALSE) %>% 
+  mutate(
+    solved = if_else(disposition %in% c("Closed without arrest", "Open/No arrest"), "Unsolved", "Solved", NA_character_)) %>%
+  filter(!(city %in% c("Dallas", "Phoenix", "Kansas City"))) %>%
+  filter(city_state != "Tulsa, AL") %>%
+  mutate(victim_age = as.numeric(victim_age)) %>%
+  filter(victim_race %in% c("White", "Black"))
 
 
+homicides %>% 
+  group_by(city_state) %>%
+  summarize() %>% 
+  print(n = 51)
+
+homicides %>% 
+  group_by(victim_race) %>%
+  summarise() 
+  
+```
 
 
 
