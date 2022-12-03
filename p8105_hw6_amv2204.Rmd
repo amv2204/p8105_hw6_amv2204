@@ -144,3 +144,118 @@ In New York City, the odds of solving a homicide case for a male is 0.26 times t
 However, the confidence interval for Albuquerque includes the null value of 1 making the OR not statistically significant whereas 1 is not in the confidence interval for New York, which means the OR is statistically significant. We would need to double check with the p-values.
 
 
+## Problem 3
+
+
+We will start by loading and cleaning the data in the following way: 
+
+
+```{r}
+children = read.csv("./birthweight.csv")
+
+children = 
+  children %>%
+  janitor::clean_names() %>%
+  mutate(id = 1:4342,
+         babysex = recode(babysex,
+                          "1" = "male",
+                          "2" = "female"),
+         babysex = factor(babysex, levels = c("male", "female")))
+
+```
+
+
+Now we will construct a regression model that predicts birthweight using the given predictors in the dataset. I choose to use the variables `gaweeks`, `ppbmi`, and `smoken`. I choose these variables because there has been research and evidence that being overweight or obese, smoking, and gestational age at birth can all have negative impacts on a baby's birthweight. When constructing plots to visually examine a relationship between these variables and birthweight, there is not obvious relationship that can be deciphered as seen below. However, for the `gaweeks` variable, we can see somewhat of a linear relationship.
+
+
+```{r}
+
+children %>%
+  ggplot(aes(x = ppwt, y = bwt)) +
+  geom_point()
+
+children %>%
+  ggplot(aes(x = smoken, y = bwt)) +
+  geom_point()
+
+children %>%
+  ggplot(aes(x = gaweeks, y = bwt)) +
+  geom_point()
+
+```
+
+
+Below is the model I have constructed and a plot of the residuals vs. the fitted values. I have also plotted the true `bwt` values in red. When you calculate the `rmse` for the model, the value is `rmse(linear_mod, children)` which is very high and tells us that for this model, the residuals are very spread out and not very concentrated around the model regression line. 
+
+
+```{r}
+linear_mod = lm(bwt ~ gaweeks + ppwt + smoken, data = children)
+
+children %>%
+  add_predictions(linear_mod) %>%
+  add_residuals(linear_mod, var = "resid") %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point() +
+  geom_point(aes(y = bwt), color = "red")
+
+
+rmse(linear_mod, children)
+
+
+```
+
+
+Now we will construct and compare my model to the 2 other models of interest for this problem. The `rmse` values are still high but much lower compared to my proposed model which shows an early indication that they may better predict `bwt`.
+
+
+```{r}
+
+mod_two = lm(bwt ~ blength + gaweeks, data = children)
+
+mod_three = lm(bwt ~ babysex * blength * bhead, data = children)
+
+rmse(linear_mod, children)
+rmse(mod_two, children)
+rmse(mod_three, children)
+
+
+```
+
+
+We will finish the comparison by using cross-validation as below:
+
+
+```{r}
+
+cv_df = 
+  crossv_mc(children, 100) %>%
+  mutate(
+    train = map(train, as_tibble),
+    test =  map(test, as_tibble)
+  ) %>%
+  mutate(
+    linear_fit =    map(.x = train, ~lm(bwt ~ gaweeks + ppbmi + smoken,  data = .x)),
+    mod_two_fit =   map(.x = train, ~lm(bwt ~ blength + gaweeks,         data = .x)),
+    mod_three_fit = map(.x = train, ~lm(bwt ~ babysex * blength * bhead, data = .x))
+  ) %>%
+  mutate(
+    rmse_linear =    map2_dbl(.x = linear_fit,    .y = test, ~rmse(model = .x, data = .y)),
+    rmse_mod_two =   map2_dbl(.x = mod_two_fit,   .y = test, ~rmse(model = .x, data = .y)),
+    rmse_mod_three = map2_dbl(.x = mod_three_fit, .y = test, ~rmse(model = .x, data = .y)))
+
+
+cv_df %>% 
+  select(starts_with("rmse")) %>%
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "RMSE",
+    names_prefix = "rmse_"
+  ) %>% 
+  ggplot(aes(x = model, y = RMSE)) +
+    geom_boxplot()
+```
+
+
+According to the boxplots generated, we can see that the model with the highest `rmse` value is my model and the one with the lowest is model three with the interaction terms. This means that model three predicts `bwt` best with its model line having the least amount of residual deviation from the line of best fit. The best model to use would be model 3.
+
