@@ -191,8 +191,7 @@ children = read.csv("./birthweight.csv")
 children = 
   children %>%
   janitor::clean_names() %>%
-  mutate(id = 1:4342,
-         babysex = recode(babysex,
+  mutate(babysex = recode(babysex,
                           "1" = "male",
                           "2" = "female"),
          babysex = factor(babysex, levels = c("male", "female")))
