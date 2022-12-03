@@ -36,6 +36,50 @@ scale_fill_discrete = scale_fill_viridis_d
 ## Problem 1
 
 
+```{r weather_df, cache = TRUE}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+
+```{r}
+weather_df %>% 
+  modelr::bootstrap(n = 1000) %>% 
+  mutate(
+    models = map(strap, ~lm(tmax ~ tmin, data = .x) ),
+    results = map(models, broom::glance)) %>% 
+  select(-strap, -models) %>% 
+  unnest(results) %>% 
+  ggplot(aes(x = r.squared)) + geom_density()
+```
+
+
+```{r}
+weather_df %>% 
+  modelr::bootstrap(n = 1000) %>% 
+  mutate(
+    models = map(strap, ~lm(tmax ~ tmin, data = .x) ),
+    results = map(models, broom::tidy)) %>% 
+  select(-strap, -models) %>% 
+  unnest(results) %>% 
+  select(id = `.id`, term, estimate) %>% 
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate) %>% 
+  rename(beta0 = `(Intercept)`, beta1 = tmin) %>% 
+  mutate(log_b0b1 = log(beta0 * beta1)) %>% 
+  ggplot(aes(x = log_b0b1)) + geom_density()
+```
+
 
 ## Problem 2
 
@@ -59,15 +103,6 @@ homicides =
   mutate(victim_race = fct_relevel(victim_race, "White")) %>%
   filter(victim_sex != "Unknown")
 
-homicides %>% 
-  group_by(city_state) %>%
-  summarize() %>% 
-  print(n = 51)
-
-homicides %>% 
-  group_by(victim_race) %>%
-  summarise() 
-  
 ```
 
 Now for just the city of Baltimore, we will fit a logistic model with homicide being solved as the outcome and with victim age, sex, and race as predictors. 
@@ -185,7 +220,7 @@ children %>%
 ```
 
 
-Below is the model I have constructed and a plot of the residuals vs. the fitted values. I have also plotted the true `bwt` values in red. When you calculate the `rmse` for the model, the value is `rmse(linear_mod, children)` which is very high and tells us that for this model, the residuals are very spread out and not very concentrated around the model regression line. 
+Below is the model I have constructed and a plot of the residuals vs. the fitted values. I have also plotted the true `bwt` values in red. When you calculate the `rmse` for the model, the value is 456.66, which is very high and tells us that for this model, the residuals are very spread out and not very concentrated around the model regression line. 
 
 
 ```{r}
